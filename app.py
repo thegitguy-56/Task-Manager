@@ -113,11 +113,24 @@ def dashboard():
     if current_user.role in ["admin", "manager"]:
         user_teams = Team.query.filter_by(manager_id=current_user.id).all()
 
+    # ---- Module 4: progress metrics ----
+    total_tasks = Task.query.count()
+    completed_tasks = Task.query.filter_by(status="completed").count()
+
+    if total_tasks > 0:
+        progress_pct = round((completed_tasks / total_tasks) * 100)
+    else:
+        progress_pct = 0
+
     return render_template(
         "dashboard.html",
         user=current_user,
         user_teams=user_teams,
+        total_tasks=total_tasks,
+        completed_tasks=completed_tasks,
+        progress_pct=progress_pct,
     )
+
 
 
 # TEAM CREATION (admin/manager only)

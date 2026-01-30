@@ -5,6 +5,20 @@
 <p>Welcome, {{ user.name }}!</p>
 <p>Your role: {{ user.role }}</p>
 
+<h3>Overall Task Progress</h3>
+{% if total_tasks > 0 %}
+    <p>Completed: {{ completed_tasks }} / {{ total_tasks }} ({{ progress_pct }}%)</p>
+
+    <!-- Simple HTML progress bar -->
+    <progress value="{{ progress_pct }}" max="100"></progress>
+{% else %}
+    <p>No tasks created yet.</p>
+{% endif %}
+
+<p>
+    <a href="{{ url_for('tasks') }}">Go to Task Management</a>
+</p>
+
 {% if user.role == 'admin' or user.role == 'manager' %}
     <h3>Your Teams</h3>
     {% if user_teams %}
@@ -21,10 +35,6 @@
 {% else %}
     <p>You are a member. Teams are managed by admins/managers.</p>
 {% endif %}
-
-<p>
-    <a href="{{ url_for('tasks') }}">Go to Task Management</a>
-</p>
 
 <br>
 <a href="{{ url_for('logout') }}">Logout</a>
