@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Tasks</h2>
+
+<h3>Create New Task</h3>
+<form method="post" action="{{ url_for('create_task') }}">
+    <label>Task Name:</label>
+    <input type="text" name="task_name" required><br>
+
+    <label>Description:</label>
+    <textarea name="description"></textarea><br>
+
+    <label>Assigned To:</label>
+    <select name="assigned_to" required>
+        <option value="">-- Select User --</option>
+        {% for user in users %}
+            <option value="{{ user.id }}">{{ user.name }} ({{ user.role }})</option>
+        {% endfor %}
+    </select><br>
+
+    <label>Start Date:</label>
+    <input type="date" name="start_date"><br>
+
+    <label>End Date:</label>
+    <input type="date" name="end_date"><br>
+
+    <label>Priority:</label>
+    <select name="priority">
+        <option value="">None</option>
+        <option value="Low">Low</option>
+        <option value="Medium" selected>Medium</option>
+        <option value="High">High</option>
+    </select><br>
+
+    <button type="submit">Create Task</button>
+</form>
+
+<hr>
+
+<h3>All Tasks</h3>
+<table border="1" cellpadding="5" cellspacing="0">
+    <tr>
+        <th>ID</th>
+        <th>Task Name</th>
+        <th>Description</th>
+        <th>Assigned To</th>
+        <th>Start</th>
+        <th>End</th>
+        <th>Priority</th>
+        <th>Status</th>
+        <th>Change Status</th>
+    </tr>
+
+    {% for task in tasks %}
+    <tr>
+        <td>{{ task.id }}</td>
+        <td>{{ task.task_name }}</td>
+        <td>{{ task.description }}</td>
+        <td>
+            {% for user in users %}
+                {% if user.id == task.assigned_to %}
+                    {{ user.name }}
+                {% endif %}
+            {% endfor %}
+        </td>
+        <td>{{ task.start_date }}</td>
+        <td>{{ task.end_date }}</td>
+        <td>{{ task.priority }}</td>
+        <td>{{ task.status }}</td>
+        <td>
+            <form method="post" action="{{ url_for('update_status', task_id=task.id) }}">
+                <select name="status">
+                    <option value="pending" {% if task.status == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="in progress" {% if task.status == 'in progress' %}selected{% endif %}>In Progress</option>
+                    <option value="completed" {% if task.status == 'completed' %}selected{% endif %}>Completed</option>
+                </select>
+                <button type="submit">Update</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<p>
+    <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+</p>
+
+{% endblock %}

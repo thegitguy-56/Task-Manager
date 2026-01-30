@@ -1,5 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
+from datetime import date  
+
 
 db = SQLAlchemy()
 
@@ -27,3 +29,22 @@ class Team(db.Model):
 
     def __repr__(self):
         return f"<Team {self.team_name}>"
+class Task(db.Model):
+    __tablename__ = "tasks"
+
+    id = db.Column(db.Integer, primary_key=True)
+    task_name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+
+    # who it is assigned to
+    assigned_to = db.Column(db.Integer, db.ForeignKey("users.id"))
+
+    # dates for scheduling
+    start_date = db.Column(db.Date)
+    end_date = db.Column(db.Date)
+
+    status = db.Column(db.String(20), default="pending")  # pending / in progress / completed
+    priority = db.Column(db.String(20))                   # e.g., Low / Medium / High
+
+    def __repr__(self):
+        return f"<Task {self.task_name}>"

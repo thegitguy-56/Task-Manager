@@ -8,7 +8,8 @@ from flask_login import (
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from models import db, User, Team
+from models import db, User, Team, Task
+from datetime import datetime
 
 
 app = Flask(__name__)
@@ -146,6 +147,71 @@ def create_team():
     flash("Team created successfully")
     return redirect(url_for("dashboard"))
 
+# ---------- TASKS (Module 3) ----------
+
+@app.route("/tasks")
+@login_required
+def tasks():
+    # For now, show all tasks. Later you can filter by team/assigned user.
+    all_tasks = Task.query.all()
+    users = User.query.all()  # used for "Assigned To" dropdown
+    return render_template("tasks.html", tasks=all_tasks, users=users)
+
+
+@app.route("/create_task", methods=["POST"])
+@login_required
+def create_task():
+    task_name = request.form.get("task_name")
+    description = request.form.get("description")
+    assigned_to = request.form.get("assigned_to")
+    start_date_str = request.form.get("start_date")
+    end_date_str = request.form.get("end_date")
+    priority = request.form.get("priority")
+
+    if not task_name or not assigned_to:
+        flash("Task name and assigned user are required")
+        return redirect(url_for("tasks"))
+
+    # convert dates from string (YYYY-MM-DD) to date objects
+    start_date = None
+    end_date = None
+    if start_date_str:
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+    if end_date_str:
+        end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+
+    new_task = Task(
+        task_name=task_name,
+        description=description,
+        assigned_to=int(assigned_to),
+        start_date=start_date,
+        end_date=end_date,
+        status="pending",
+        priority=priority,
+    )
+    db.session.add(new_task)
+    db.session.commit()
+
+    flash("Task created successfully")
+    return redirect(url_for("tasks"))
+
+
+@app.route("/update_status/<int:task_id>", methods=["POST"])
+@login_required
+def update_status(task_id):
+    task = Task.query.get_or_404(task_id)
+
+    new_status = request.form.get("status")
+    if new_status not in ["pending", "in progress", "completed"]:
+        flash("Invalid status")
+        return redirect(url_for("tasks"))
+
+    # (Basic rule: any logged-in user can update; you can restrict later)
+    task.status = new_status
+    db.session.commit()
+
+    flash("Task status updated")
+    return redirect(url_for("tasks"))
 
 # ---- DB create + run ----
 if __name__ == "__main__":
