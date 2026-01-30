@@ -10,13 +10,21 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from models import db, User, Team, Task
 from datetime import datetime
+import os
 
 
 app = Flask(__name__)
 
 # ---- Config ----
 app.config["SECRET_KEY"] = "change_this_in_production"
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
+
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///database.db")
+# For some providers, postgres URL starts with postgres:// which SQLAlchemy dislikes
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
+
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # ---- Init DB ----
