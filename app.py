@@ -112,12 +112,6 @@ def logout():
     flash("Logged out")
     return redirect(url_for("login"))
 
-@app.route("/init_db")
-def init_db():
-    with app.app_context():
-        db.create_all()
-    return "Database initialized"
-
 # DASHBOARD
 @app.route("/dashboard")
 @login_required
@@ -173,6 +167,11 @@ def create_team():
     flash("Team created successfully")
     return redirect(url_for("dashboard"))
 
+@app.route("/init_db")
+def init_db():
+    with app.app_context():
+        db.create_all()
+    return "Database initialized"
 # ---------- TASKS (Module 3) ----------
 
 @app.route("/tasks")
