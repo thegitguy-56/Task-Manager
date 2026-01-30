@@ -1,0 +1,19 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+}
+
+label {
+    display: inline-block;
+    width: 100px;
+}
+
+input, select, button {
+    margin-bottom: 8px;
+}
+
+.flash-messages {
+    list-style: none;
+    padding: 0;
+    color: red;
+}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Dashboard</h2>
+<p>Welcome, {{ user.name }}!</p>
+<p>Your role: {{ user.role }}</p>
+
+{% if user.role == 'admin' or user.role == 'manager' %}
+    <h3>Your Teams</h3>
+    {% if user_teams %}
+        <ul>
+        {% for team in user_teams %}
+            <li>{{ team.team_name }}</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No teams yet.</p>
+    {% endif %}
+
+    <a href="{{ url_for('create_team_page') }}">Create New Team</a><br>
+{% else %}
+    <p>You are a member. Teams are managed by admins/managers.</p>
+{% endif %}
+
+<br>
+<a href="{{ url_for('logout') }}">Logout</a>
+
+{% endblock %}
