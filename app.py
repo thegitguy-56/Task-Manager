@@ -112,6 +112,11 @@ def logout():
     flash("Logged out")
     return redirect(url_for("login"))
 
+@app.route("/init_db")
+def init_db():
+    with app.app_context():
+        db.create_all()
+    return "Database initialized"
 
 # DASHBOARD
 @app.route("/dashboard")
