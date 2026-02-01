@@ -1,42 +1,81 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h2>Dashboard</h2>
-<p>Welcome, {{ user.name }}!</p>
-<p>Your role: {{ user.role }}</p>
+<h2 class="mb-3">Dashboard</h2>
+<p class="text-muted mb-4">Welcome, {{ user.name }} ({{ user.role }})</p>
 
-<h3>Overall Task Progress</h3>
-{% if total_tasks > 0 %}
-    <p>Completed: {{ completed_tasks }} / {{ total_tasks }} ({{ progress_pct }}%)</p>
+<div class="row g-3 mb-4">
+    <!-- Overall Progress -->
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Overall Progress</h5>
+                {% if total_tasks > 0 %}
+                    <p class="card-text mb-1">
+                        {{ completed_tasks }} of {{ total_tasks }} tasks completed ({{ progress_pct }}%)
+                    </p>
+                    <div class="progress" style="height: 22px;">
+                        <div class="progress-bar bg-success progress-bar-animated-custom"
+                             role="progressbar"
+                             style="--progress-width: {{ progress_pct }}%;"
+                             aria-valuenow="{{ progress_pct }}"
+                             aria-valuemin="0"
+                             aria-valuemax="100">
+                            {{ progress_pct }}%
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="card-text text-muted">No tasks created yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 
-    <!-- Simple HTML progress bar -->
-    <progress value="{{ progress_pct }}" max="100"></progress>
-{% else %}
-    <p>No tasks created yet.</p>
-{% endif %}
+    <!-- Quick Actions -->
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Quick Actions</h5>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('tasks') }}" class="btn btn-primary btn-sm">
+                        Go to Task Management
+                    </a>
+                    {% if user.role == 'admin' or user.role == 'manager' %}
+                    <a href="{{ url_for('create_team_page') }}" class="btn btn-outline-secondary btn-sm">
+                        Create New Team
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-<p>
-    <a href="{{ url_for('tasks') }}">Go to Task Management</a>
-</p>
-
+<!-- Teams / Role Info -->
 {% if user.role == 'admin' or user.role == 'manager' %}
-    <h3>Your Teams</h3>
-    {% if user_teams %}
-        <ul>
-        {% for team in user_teams %}
-            <li>{{ team.team_name }}</li>
-        {% endfor %}
-        </ul>
-    {% else %}
-        <p>No teams yet.</p>
-    {% endif %}
-
-    <a href="{{ url_for('create_team_page') }}">Create New Team</a><br>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h5 class="card-title">Your Teams</h5>
+        {% if user_teams %}
+            <ul class="list-group list-group-flush">
+                {% for team in user_teams %}
+                    <li class="list-group-item">{{ team.team_name }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-muted mb-0">No teams yet.</p>
+        {% endif %}
+    </div>
+</div>
 {% else %}
-    <p>You are a member. Teams are managed by admins/managers.</p>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h5 class="card-title">Team Info</h5>
+        <p class="text-muted mb-0">
+            You are a member. Teams are managed by admins/managers.
+        </p>
+    </div>
+</div>
 {% endif %}
-
-<br>
-<a href="{{ url_for('logout') }}">Logout</a>
 
 {% endblock %}

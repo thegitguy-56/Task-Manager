@@ -1,89 +1,130 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h2>Tasks</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Tasks</h2>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">Back to Dashboard</a>
+</div>
 
-<h3>Create New Task</h3>
-<form method="post" action="{{ url_for('create_task') }}">
-    <label>Task Name:</label>
-    <input type="text" name="task_name" required><br>
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Create New Task</h5>
+                <form method="post" action="{{ url_for('create_task') }}">
+                    <div class="mb-3">
+                        <label class="form-label">Task Name</label>
+                        <input type="text" name="task_name" class="form-control" required>
+                    </div>
 
-    <label>Description:</label>
-    <textarea name="description"></textarea><br>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control" rows="2"></textarea>
+                    </div>
 
-    <label>Assigned To:</label>
-    <select name="assigned_to" required>
-        <option value="">-- Select User --</option>
-        {% for user in users %}
-            <option value="{{ user.id }}">{{ user.name }} ({{ user.role }})</option>
-        {% endfor %}
-    </select><br>
+                    <div class="mb-3">
+                        <label class="form-label">Assigned To</label>
+                        <select name="assigned_to" class="form-select" required>
+                            <option value="">-- Select User --</option>
+                            {% for user in users %}
+                                <option value="{{ user.id }}">{{ user.name }} ({{ user.role }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-    <label>Start Date:</label>
-    <input type="date" name="start_date"><br>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" name="start_date" class="form-control">
+                        </div>
+                        <div class="col">
+                            <label class="form-label">End Date</label>
+                            <input type="date" name="end_date" class="form-control">
+                        </div>
+                    </div>
 
-    <label>End Date:</label>
-    <input type="date" name="end_date"><br>
+                    <div class="mb-3">
+                        <label class="form-label">Priority</label>
+                        <select name="priority" class="form-select">
+                            <option value="">None</option>
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
 
-    <label>Priority:</label>
-    <select name="priority">
-        <option value="">None</option>
-        <option value="Low">Low</option>
-        <option value="Medium" selected>Medium</option>
-        <option value="High">High</option>
-    </select><br>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Create Task</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
-    <button type="submit">Create Task</button>
-</form>
-
-<hr>
-
-<h3>All Tasks</h3>
-<table border="1" cellpadding="5" cellspacing="0">
-    <tr>
-        <th>ID</th>
-        <th>Task Name</th>
-        <th>Description</th>
-        <th>Assigned To</th>
-        <th>Start</th>
-        <th>End</th>
-        <th>Priority</th>
-        <th>Status</th>
-        <th>Change Status</th>
-    </tr>
-
-    {% for task in tasks %}
-    <tr>
-        <td>{{ task.id }}</td>
-        <td>{{ task.task_name }}</td>
-        <td>{{ task.description }}</td>
-        <td>
-            {% for user in users %}
-                {% if user.id == task.assigned_to %}
-                    {{ user.name }}
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-3">All Tasks</h5>
+                {% if tasks %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm align-middle">
+                        <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Task Name</th>
+                            <th>Assigned To</th>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Change Status</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for task in tasks %}
+                        <tr>
+                            <td>{{ task.id }}</td>
+                            <td>{{ task.task_name }}</td>
+                            <td>
+                                {% for user in users %}
+                                    {% if user.id == task.assigned_to %}
+                                        {{ user.name }}
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                            <td>{{ task.start_date }}</td>
+                            <td>{{ task.end_date }}</td>
+                            <td>{{ task.priority }}</td>
+                            <td>
+                                <span class="badge
+                                    {% if task.status == 'completed' %}bg-success
+                                    {% elif task.status == 'in progress' %}bg-warning text-dark
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ task.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <form method="post" action="{{ url_for('update_status', task_id=task.id) }}"
+                                      class="d-flex gap-1">
+                                    <select name="status" class="form-select form-select-sm">
+                                        <option value="pending" {% if task.status == 'pending' %}selected{% endif %}>Pending</option>
+                                        <option value="in progress" {% if task.status == 'in progress' %}selected{% endif %}>In Progress</option>
+                                        <option value="completed" {% if task.status == 'completed' %}selected{% endif %}>Completed</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Update</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                    <p class="text-muted mb-0">No tasks yet. Create one on the left.</p>
                 {% endif %}
-            {% endfor %}
-        </td>
-        <td>{{ task.start_date }}</td>
-        <td>{{ task.end_date }}</td>
-        <td>{{ task.priority }}</td>
-        <td>{{ task.status }}</td>
-        <td>
-            <form method="post" action="{{ url_for('update_status', task_id=task.id) }}">
-                <select name="status">
-                    <option value="pending" {% if task.status == 'pending' %}selected{% endif %}>Pending</option>
-                    <option value="in progress" {% if task.status == 'in progress' %}selected{% endif %}>In Progress</option>
-                    <option value="completed" {% if task.status == 'completed' %}selected{% endif %}>Completed</option>
-                </select>
-                <button type="submit">Update</button>
-            </form>
-        </td>
-    </tr>
-    {% endfor %}
-</table>
-
-<p>
-    <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
-</p>
+            </div>
+        </div>
+    </div>
+</div>
 
 {% endblock %}

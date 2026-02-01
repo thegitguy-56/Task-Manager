@@ -16,4 +16,9 @@ input, select, button {
     list-style: none;
     padding: 0;
     color: red;
+
+.progress-bar-animated-custom {
+    width: var(--progress-width, 0%);
+}
+
 }
