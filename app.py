@@ -17,9 +17,13 @@ from flask_login import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func, case
 
-from models import db, User, Team, Task
+from models import db, User, Team, Task, Activity
 from datetime import datetime, date
 import os
+
+from flask import Response
+import csv
+import io
 
 
 app = Flask(__name__)
@@ -46,6 +50,18 @@ login_manager.login_view = "login"
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+
+def log_activity(action: str):
+    if not current_user.is_authenticated:
+        return
+    entry = Activity(
+        user_id=current_user.id,
+        action=action,
+        timestamp=datetime.utcnow(),
+    )
+    db.session.add(entry)
+    # commit will be done by caller after their own changes
 
 
 # ---------- ROUTES ----------
@@ -119,28 +135,92 @@ def logout():
     return redirect(url_for("login"))
 
 
+# PROFILE
+@app.route("/profile", methods=["GET", "POST"])
+@login_required
+def profile():
+    if request.method == "POST":
+        # Update name
+        new_name = request.form.get("name")
+        if not new_name:
+            flash("Name cannot be empty")
+            return redirect(url_for("profile"))
+
+        current_user.name = new_name
+
+        # Change password if fields filled
+        current_password = request.form.get("current_password")
+        new_password = request.form.get("new_password")
+        confirm_password = request.form.get("confirm_password")
+
+        if current_password or new_password or confirm_password:
+            # All 3 must be present
+            if not (current_password and new_password and confirm_password):
+                flash("To change password, fill all password fields")
+                return redirect(url_for("profile"))
+
+            # Check current password
+            if not check_password_hash(current_user.password_hash, current_password):
+                flash("Current password is incorrect")
+                return redirect(url_for("profile"))
+
+            # Check new password match + basic length
+            if new_password != confirm_password:
+                flash("New passwords do not match")
+                return redirect(url_for("profile"))
+            if len(new_password) < 6:
+                flash("New password must be at least 6 characters")
+                return redirect(url_for("profile"))
+
+            current_user.password_hash = generate_password_hash(
+                new_password, method="pbkdf2:sha256"
+            )
+
+        db.session.commit()
+        flash("Profile updated")
+        return redirect(url_for("profile"))
+
+    return render_template("profile.html", user=current_user)
+
+
 # DASHBOARD
 @app.route("/dashboard")
 @login_required
 def dashboard():
+    # Teams managed by this user (for admin/manager)
     user_teams = None
+    manager_teams = []
+    selected_team_id = None
+
     if current_user.role in ["admin", "manager"]:
         user_teams = Team.query.filter_by(manager_id=current_user.id).all()
+        manager_teams = user_teams
+        selected_team_id = request.args.get("team_id")
 
-    # Progress metrics
-    total_tasks = Task.query.count()
-    completed_tasks = Task.query.filter_by(status="completed").count()
-    pending_tasks = Task.query.filter_by(status="pending").count()
-    in_progress_tasks = Task.query.filter_by(status="in progress").count()
+    # Base task query, optionally filtered by team for managers
+    task_query = Task.query
+    if current_user.role in ["admin", "manager"] and selected_team_id:
+        task_query = task_query.filter(Task.team_id == int(selected_team_id))
+    elif current_user.role == "member" and current_user.team_id:
+        task_query = task_query.filter(Task.team_id == current_user.team_id)
+
+    total_tasks = task_query.count()
+    completed_tasks = task_query.filter_by(status="completed").count()
+    pending_tasks = task_query.filter_by(status="pending").count()
+    in_progress_tasks = task_query.filter_by(status="in progress").count()
 
     if total_tasks > 0:
         progress_pct = round((completed_tasks / total_tasks) * 100)
     else:
         progress_pct = 0
 
-    # Per-user statistics (for admin/manager)
+    # Per-user statistics (for admin/manager, optionally per team)
     user_stats = []
     if current_user.role in ["admin", "manager"]:
+        user_query = User.query
+        if selected_team_id:
+            user_query = user_query.filter(User.team_id == int(selected_team_id))
+
         stats = (
             db.session.query(
                 User.id,
@@ -154,9 +234,11 @@ def dashboard():
                 ).label("completed"),
             )
             .outerjoin(Task, Task.assigned_to == User.id)
+            .filter(user_query.subquery().c.id == User.id)
             .group_by(User.id)
             .all()
         )
+
         for uid, name, total, completed in stats:
             total = total or 0
             completed = completed or 0
@@ -165,16 +247,39 @@ def dashboard():
                 {"name": name, "total": total, "completed": completed, "pct": pct}
             )
 
+    # Team membership info for any logged-in user
+    current_team = None
+    teammates = []
+    manager = None
+    if current_user.team_id:
+        current_team = Team.query.get(current_user.team_id)
+        teammates = User.query.filter(
+            User.team_id == current_user.team_id, User.id != current_user.id
+        ).all()
+        if current_team and current_team.manager_id:
+            manager = User.query.get(current_team.manager_id)
+
+    # Recent activity (not filtered by team for now)
+    recent_activity = (
+        Activity.query.order_by(Activity.timestamp.desc()).limit(10).all()
+    )
+
     return render_template(
         "dashboard.html",
         user=current_user,
         user_teams=user_teams,
+        manager_teams=manager_teams,
+        selected_team_id=selected_team_id,
         total_tasks=total_tasks,
         completed_tasks=completed_tasks,
         pending_tasks=pending_tasks,
         in_progress_tasks=in_progress_tasks,
         progress_pct=progress_pct,
         user_stats=user_stats,
+        current_team=current_team,
+        teammates=teammates,
+        manager=manager,
+        recent_activity=recent_activity,
     )
 
 
@@ -193,6 +298,7 @@ def create_team():
     if current_user.role not in ["admin", "manager"]:
         abort(403)
 
+        # unreachable if forbidden, kept for clarity
     team_name = request.form.get("team_name")
     if not team_name:
         flash("Team name is required")
@@ -204,6 +310,60 @@ def create_team():
 
     flash("Team created successfully")
     return redirect(url_for("dashboard"))
+
+
+@app.route("/manage_teams", methods=["GET", "POST"])
+@login_required
+def manage_teams():
+    if current_user.role not in ["admin", "manager"]:
+        abort(403)
+
+    # Teams this manager/admin owns
+    teams = Team.query.filter_by(manager_id=current_user.id).all()
+
+    selected_team_id = request.args.get("team_id") or request.form.get("team_id")
+    selected_team = None
+    team_members = []
+    other_users = []
+
+    if selected_team_id:
+        selected_team = Team.query.get(int(selected_team_id))
+        if selected_team and selected_team.manager_id != current_user.id:
+            abort(403)
+
+        if selected_team:
+            team_members = User.query.filter(User.team_id == selected_team.id).all()
+            other_users = User.query.filter(
+                (User.team_id.is_(None)) | (User.team_id != selected_team.id)
+            ).all()
+
+    # Handle add/remove actions
+    if request.method == "POST" and selected_team:
+        action = request.form.get("action")
+        user_id = request.form.get("user_id")
+        if user_id:
+            user = User.query.get(int(user_id))
+        else:
+            user = None
+
+        if action == "add" and user:
+            user.team_id = selected_team.id
+            db.session.commit()
+            flash(f"Added {user.name} to team {selected_team.team_name}")
+        elif action == "remove" and user:
+            user.team_id = None
+            db.session.commit()
+            flash(f"Removed {user.name} from team {selected_team.team_name}")
+
+        return redirect(url_for("manage_teams", team_id=selected_team.id))
+
+    return render_template(
+        "manage_teams.html",
+        teams=teams,
+        selected_team=selected_team,
+        team_members=team_members,
+        other_users=other_users,
+    )
 
 
 @app.route("/init_db")
@@ -222,9 +382,23 @@ def tasks():
     status_filter = request.args.get("status", "")
     priority_filter = request.args.get("priority", "")
     search = request.args.get("search", "")
-    sort = request.args.get("sort", "end_date")  # 'end_date' or 'priority'
+    sort = request.args.get("sort", "end_date")
+    team_id = request.args.get("team_id")  # for admin/manager
+
+    # Force members to "my" view
+    if current_user.role == "member":
+        view = "my"
 
     query = Task.query
+
+    # Team filter
+    if current_user.role == "member":
+        # members only see tasks in their own team
+        query = query.filter(Task.team_id == current_user.team_id)
+        team_id = current_user.team_id
+    else:
+        if team_id:
+            query = query.filter(Task.team_id == int(team_id))
 
     # My vs All
     if view == "my" or current_user.role == "member":
@@ -240,7 +414,7 @@ def tasks():
 
     # Sort
     if sort == "end_date":
-        query = query.order_by(Task.end_date.asc().nullslast())
+        query = query.order_by(Task.end_date.asc())
     elif sort == "priority":
         priority_order = case(
             (Task.priority == "High", 1),
@@ -248,11 +422,16 @@ def tasks():
             (Task.priority == "Low", 3),
             else_=4,
         )
-        query = query.order_by(priority_order, Task.end_date.asc().nullslast())
+        query = query.order_by(priority_order, Task.end_date.asc())
 
     all_tasks = query.all()
     users = User.query.all()
     today = date.today()
+
+    # Teams for manager/admin dropdown
+    manager_teams = []
+    if current_user.role in ["admin", "manager"]:
+        manager_teams = Team.query.filter_by(manager_id=current_user.id).all()
 
     return render_template(
         "tasks.html",
@@ -264,6 +443,8 @@ def tasks():
         priority_filter=priority_filter,
         search=search,
         sort=sort,
+        team_id=team_id,
+        manager_teams=manager_teams,
     )
 
 
@@ -281,6 +462,26 @@ def create_task():
         flash("Task name and assigned user are required")
         return redirect(url_for("tasks"))
 
+    # Members can only assign tasks to themselves
+    if current_user.role == "member" and int(assigned_to) != current_user.id:
+        flash("You can only create tasks assigned to yourself")
+        return redirect(url_for("tasks"))
+
+    # Determine team for this task
+    team_id = None
+    if current_user.role == "member":
+        # member’s tasks always in their own team
+        team_id = current_user.team_id
+    else:
+        # admin/manager chooses from form (we’ll add the field next)
+        team_id_str = request.form.get("team_id")
+        if team_id_str:
+            team_id = int(team_id_str)
+
+    if not team_id:
+        flash("Please select a team for this task")
+        return redirect(url_for("tasks"))
+
     start_date = (
         datetime.strptime(start_date_str, "%Y-%m-%d").date()
         if start_date_str
@@ -290,6 +491,10 @@ def create_task():
         datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else None
     )
 
+    if start_date and end_date and end_date < start_date:
+        flash("End date cannot be before start date")
+        return redirect(url_for("tasks"))
+
     new_task = Task(
         task_name=task_name,
         description=description,
@@ -298,13 +503,14 @@ def create_task():
         end_date=end_date,
         status="pending",
         priority=priority,
+        team_id=team_id,
     )
     db.session.add(new_task)
+    log_activity(f"created task '{task_name}'")
     db.session.commit()
 
     flash("Task created successfully")
     return redirect(url_for("tasks"))
-
 
 @app.route("/update_status/<int:task_id>", methods=["POST"])
 @login_required
@@ -316,12 +522,162 @@ def update_status(task_id):
         flash("Invalid status")
         return redirect(url_for("tasks"))
 
+    old_status = task.status
     task.status = new_status
+    log_activity(f"changed status of task '{task.task_name}' from {old_status} to {new_status}")
     db.session.commit()
 
     flash("Task status updated")
     return redirect(url_for("tasks"))
 
+
+# ----- EDIT / DELETE TASKS -----
+
+@app.route("/edit_task/<int:task_id>", methods=["GET", "POST"])
+@login_required
+def edit_task(task_id):
+    task = Task.query.get_or_404(task_id)
+
+    # Simple permission: admin/manager or assignee can edit
+    if current_user.role not in ["admin", "manager"] and current_user.id != task.assigned_to:
+        abort(403)
+
+    users = User.query.all()
+
+    if request.method == "POST":
+        task.task_name = request.form.get("task_name")
+        task.description = request.form.get("description")
+        assigned_to = request.form.get("assigned_to")
+        start_date_str = request.form.get("start_date")
+        end_date_str = request.form.get("end_date")
+        task.priority = request.form.get("priority")
+
+        if not task.task_name or not assigned_to:
+            flash("Task name and assigned user are required")
+            return redirect(url_for("edit_task", task_id=task.id))
+
+        task.assigned_to = int(assigned_to)
+
+        task.start_date = (
+            datetime.strptime(start_date_str, "%Y-%m-%d").date()
+            if start_date_str
+            else None
+        )
+        task.end_date = (
+            datetime.strptime(end_date_str, "%Y-%m-%d").date()
+            if end_date_str
+            else None
+        )
+
+        if task.start_date and task.end_date and task.end_date < task.start_date:
+            flash("End date cannot be before start date")
+            return redirect(url_for("edit_task", task_id=task.id))
+
+        log_activity(f"edited task '{task.task_name}'")
+        db.session.commit()
+        flash("Task updated")
+        return redirect(url_for("tasks"))
+
+    return render_template("edit_task.html", task=task, users=users)
+
+
+@app.route("/delete_task/<int:task_id>", methods=["POST"])
+@login_required
+def delete_task(task_id):
+    task = Task.query.get_or_404(task_id)
+
+    if current_user.role not in ["admin", "manager"] and current_user.id != task.assigned_to:
+        abort(403)
+
+    log_activity(f"deleted task '{task.task_name}'")
+    db.session.delete(task)
+    db.session.commit()
+    flash("Task deleted")
+    return redirect(url_for("tasks"))
+
+@app.route("/reports")
+@login_required
+def reports():
+    if current_user.role not in ["admin", "manager"]:
+        abort(403)
+
+    team_id = request.args.get("team_id")
+
+    query = Task.query
+    if team_id:
+        query = query.filter(Task.team_id == int(team_id))
+
+    total = query.count()
+    pending = query.filter_by(status="pending").count()
+    in_progress = query.filter_by(status="in progress").count()
+    completed = query.filter_by(status="completed").count()
+
+    high = query.filter_by(priority="High").count()
+    medium = query.filter_by(priority="Medium").count()
+    low = query.filter_by(priority="Low").count()
+
+    # teams for dropdown (only teams this manager/admin owns)
+    manager_teams = Team.query.filter_by(manager_id=current_user.id).all()
+
+    return render_template(
+        "reports.html",
+        total=total,
+        pending=pending,
+        in_progress=in_progress,
+        completed=completed,
+        high=high,
+        medium=medium,
+        low=low,
+        team_id=team_id,
+        manager_teams=manager_teams,
+    )
+
+
+@app.route("/reports/export")
+@login_required
+def export_reports_csv():
+    if current_user.role not in ["admin", "manager"]:
+        abort(403)
+
+    tasks = Task.query.order_by(Task.end_date.asc()).all()
+    users = {u.id: u.name for u in User.query.all()}
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow(
+        [
+            "ID",
+            "Task Name",
+            "Description",
+            "Assigned To",
+            "Start Date",
+            "End Date",
+            "Status",
+            "Priority",
+        ]
+    )
+
+    for t in tasks:
+        writer.writerow(
+            [
+                t.id,
+                t.task_name,
+                (t.description or "").replace("\n", " "),
+                users.get(t.assigned_to, ""),
+                t.start_date or "",
+                t.end_date or "",
+                t.status,
+                t.priority or "",
+            ]
+        )
+
+    csv_data = output.getvalue()
+    output.close()
+
+    response = Response(csv_data, mimetype="text/csv")
+    response.headers["Content-Disposition"] = "attachment; filename=tasks_report.csv"
+    return response
 
 # ---- DB create + run ----
 if __name__ == "__main__":

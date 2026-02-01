@@ -8,6 +8,20 @@
 
 <!-- Filters -->
 <form method="get" class="row g-2 mb-3 align-items-end">
+    {% if current_user.role != 'member' %}
+    <div class="col-md-2">
+        <label class="form-label">Team</label>
+        <select name="team_id" class="form-select">
+            <option value="">All</option>
+            {% for t in manager_teams %}
+            <option value="{{ t.id }}" {% if team_id and team_id|int == t.id %}selected{% endif %}>
+                {{ t.team_name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+
     <div class="col-md-2">
         <label class="form-label">View</label>
         <select name="view" class="form-select">
@@ -68,13 +82,46 @@
                         <textarea name="description" class="form-control" rows="2"></textarea>
                     </div>
 
+                    {% if current_user.role != 'member' %}
+                    <div class="mb-3">
+                        <label class="form-label">Team</label>
+                        <select name="team_id" class="form-select" required>
+                            <option value="">-- Select Team --</option>
+                            {% for t in manager_teams %}
+                            <option value="{{ t.id }}"
+                                {% if team_id and team_id|int == t.id %}selected{% endif %}>
+                                {{ t.team_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
                     <div class="mb-3">
                         <label class="form-label">Assigned To</label>
                         <select name="assigned_to" class="form-select" required>
                             <option value="">-- Select User --</option>
-                            {% for user in users %}
-                                <option value="{{ user.id }}">{{ user.name }} ({{ user.role }})</option>
-                            {% endfor %}
+
+                            {% if current_user.role == 'member' %}
+                                <!-- member can only assign to self -->
+                                <option value="{{ current_user.id }}" selected>
+                                    {{ current_user.name }} ({{ current_user.role }})
+                                </option>
+                            {% else %}
+                                {% if team_id %}
+                                    {# manager selected a team in filters: show only users from that team #}
+                                    {% for user in users %}
+                                        {% if user.team_id == team_id|int %}
+                                            <option value="{{ user.id }}">{{ user.name }} ({{ user.role }})</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    {# no team selected yet: show nobody to force choosing team first #}
+                                    <option value="" disabled>
+                                        Select a team above to see members
+                                    </option>
+                                {% endif %}
+                            {% endif %}
                         </select>
                     </div>
 
@@ -124,6 +171,7 @@
                             <th>Priority</th>
                             <th>Status</th>
                             <th>Change Status</th>
+                            <th>Actions</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -183,13 +231,28 @@
                                     <button type="submit" class="btn btn-sm btn-outline-primary">Update</button>
                                 </form>
                             </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{{ url_for('edit_task', task_id=task.id) }}"
+                                       class="btn btn-outline-secondary">Edit</a>
+                                    <form method="post" action="{{ url_for('delete_task', task_id=task.id) }}"
+                                          onsubmit="return confirm('Delete this task?');">
+                                        <button type="submit" class="btn btn-outline-danger">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
                         {% endfor %}
                         </tbody>
                     </table>
                 </div>
                 {% else %}
-                    <p class="text-muted mb-0">No tasks yet. Adjust filters or create one on the left.</p>
+                    <p class="text-muted mb-2">
+                        No tasks match your filters.
+                    </p>
+                    <p class="text-muted small mb-0">
+                        Try clearing filters above or create a new task on the left.
+                    </p>
                 {% endif %}
             </div>
         </div>

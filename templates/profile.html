@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">My Profile</h2>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">Back to Dashboard</a>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Profile Information</h5>
+                <form method="post">
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" name="name" class="form-control" value="{{ user.name }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" value="{{ user.email }}" disabled>
+                        <div class="form-text">Email cannot be changed</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Role</label>
+                        <input type="text" class="form-control" value="{{ user.role|capitalize }}" disabled>
+                        <div class="form-text">Role is managed by administrators</div>
+                    </div>
+
+                    {% if user.team_id %}
+                    <div class="mb-3">
+                        <label class="form-label">Team</label>
+                        <input type="text" class="form-control" value="Team {{ user.team_id }}" disabled>
+                    </div>
+                    {% endif %}
+
+                    <hr class="my-4">
+
+                    <h6 class="mb-3">Change Password (Optional)</h6>
+                    <p class="text-muted small mb-3">Leave blank to keep current password</p>
+
+                    <div class="mb-3">
+                        <label class="form-label">Current Password</label>
+                        <input type="password" name="current_password" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">New Password</label>
+                        <input type="password" name="new_password" class="form-control">
+                        <div class="form-text">Minimum 6 characters</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Confirm New Password</label>
+                        <input type="password" name="confirm_password" class="form-control">
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Update Profile</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Account Statistics</h5>
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <strong>Member Since:</strong> 
+                        <span class="text-muted">Account creation date not tracked yet</span>
+                    </li>
+                    <li class="mb-2">
+                        <strong>Role:</strong> 
+                        <span class="badge bg-primary">{{ user.role|capitalize }}</span>
+                    </li>
+                    <li class="mb-2">
+                        <strong>Status:</strong> 
+                        <span class="badge bg-success">Active</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-3">
+            <div class="card-body">
+                <h5 class="card-title">Security Tips</h5>
+                <ul class="small text-muted mb-0">
+                    <li>Use a strong, unique password</li>
+                    <li>Change your password regularly</li>
+                    <li>Don't share your credentials with anyone</li>
+                    <li>Log out when using shared computers</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

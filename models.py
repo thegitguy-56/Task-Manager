@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 
+
 db = SQLAlchemy()
 
 
@@ -36,8 +37,13 @@ class Task(db.Model):
     task_name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
 
+    # who it is assigned to
     assigned_to = db.Column(db.Integer, db.ForeignKey("users.id"))
 
+    # NEW: which team this task belongs to
+    team_id = db.Column(db.Integer, db.ForeignKey("teams.id"))
+
+    # dates for scheduling
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
 
@@ -46,3 +52,12 @@ class Task(db.Model):
 
     def __repr__(self):
         return f"<Task {self.task_name}>"
+
+
+class Activity(db.Model):
+    __tablename__ = "activities"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    action = db.Column(db.String(200), nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False)

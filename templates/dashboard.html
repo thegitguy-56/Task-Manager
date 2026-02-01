@@ -4,6 +4,25 @@
 <h2 class="mb-3">Dashboard</h2>
 <p class="text-muted mb-4">Welcome, {{ user.name }} ({{ user.role }})</p>
 
+{% if user.role == 'admin' or user.role == 'manager' %}
+<form method="get" class="mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label">Team (for analytics)</label>
+            <select name="team_id" class="form-select" onchange="this.form.submit()">
+                <option value="">All Teams</option>
+                {% for t in manager_teams %}
+                <option value="{{ t.id }}"
+                        {% if selected_team_id and selected_team_id|int == t.id %}selected{% endif %}>
+                    {{ t.team_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</form>
+{% endif %}
+
 <div class="row g-3 mb-4">
     <!-- Overall Progress -->
     <div class="col-md-4">
@@ -49,6 +68,24 @@
             </div>
         </div>
     </div>
+
+    <!-- Status Chart -->
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Tasks by Status</h5>
+                {% if total_tasks > 0 %}
+                <canvas id="statusChart"
+                        width="200" height="200"
+                        data-pending="{{ pending_tasks }}"
+                        data-in-progress="{{ in_progress_tasks }}"
+                        data-completed="{{ completed_tasks }}"></canvas>
+                {% else %}
+                <p class="text-muted mb-0">No tasks yet to display.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Teams / Role Info -->
@@ -69,7 +106,7 @@
 </div>
 
 {% if user_stats %}
-<div class="card shadow-sm">
+<div class="card shadow-sm mb-3">
     <div class="card-body">
         <h5 class="card-title">Member Completion Stats</h5>
         <div class="table-responsive">
@@ -97,16 +134,104 @@
     </div>
 </div>
 {% endif %}
+{% endif %}
 
-{% else %}
+<!-- Team membership info (for everyone with a team) -->
 <div class="card shadow-sm">
     <div class="card-body">
-        <h5 class="card-title">Team Info</h5>
-        <p class="text-muted mb-0">
-            You are a member. Teams are managed by admins/managers.
-        </p>
+        <h5 class="card-title">Your Team</h5>
+        {% if current_team %}
+            <p class="mb-1">
+                <strong>Team:</strong> {{ current_team.team_name }}
+            </p>
+            {% if manager %}
+            <p class="mb-1">
+                <strong>Manager:</strong> {{ manager.name }}
+            </p>
+            {% endif %}
+            {% if teammates %}
+            <p class="mb-1"><strong>Teammates:</strong></p>
+            <ul class="mb-0">
+                {% for mate in teammates %}
+                    <li>{{ mate.name }} ({{ mate.role }})</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted mb-0">No other teammates yet.</p>
+            {% endif %}
+        {% else %}
+            <p class="text-muted mb-0">
+                You are not assigned to any team yet.
+            </p>
+        {% endif %}
     </div>
 </div>
+
+<!-- Recent Activity -->
+<div class="card shadow-sm mt-3">
+    <div class="card-body">
+        <h5 class="card-title">Recent Activity</h5>
+        {% if recent_activity %}
+            <ul class="list-unstyled mb-0">
+                {% for a in recent_activity %}
+                <li class="mb-1">
+                    <span class="small text-muted">
+                        {{ a.timestamp.strftime('%Y-%m-%d %H:%M') }}
+                    </span>
+                    <br>
+                    <span class="small">
+                        {{ a.action }}
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-muted mb-0">No activity yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% if total_tasks > 0 %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const ctx = document.getElementById('statusChart');
+        if (!ctx) return;
+
+        const pending = Number(ctx.dataset.pending || 0);
+        const inProgress = Number(ctx.dataset.inProgress || 0);
+        const completed = Number(ctx.dataset.completed || 0);
+
+        // If all zero, don't render chart
+        if (!pending && !inProgress && !completed) {
+            return;
+        }
+
+        const data = {
+            labels: ['Pending', 'In Progress', 'Completed'],
+            datasets: [{
+                data: [pending, inProgress, completed],
+                backgroundColor: ['#6c757d', '#ffc107', '#28a745'],
+                borderWidth: 1
+            }]
+        };
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: data,
+            options: {
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: getComputedStyle(document.documentElement)
+                                .getPropertyValue('--bs-body-color') || '#212529'
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
 {% endif %}
 
 {% endblock %}
