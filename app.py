@@ -193,9 +193,35 @@ def dashboard():
     selected_team_id = None
 
     if current_user.role in ["admin", "manager"]:
-        user_teams = Team.query.filter_by(manager_id=current_user.id).all()
-        manager_teams = user_teams
+        # teams this user manages
+        teams_q = Team.query.filter_by(manager_id=current_user.id).all()
+        manager_teams = teams_q
         selected_team_id = request.args.get("team_id")
+
+        # build enriched user_teams list for modal
+        user_teams = []
+        for t in teams_q:
+            # manager is the current user (by design)
+            manager_name = current_user.name
+
+            # teammates = all users in this team except manager
+            teammates = (
+                User.query
+                .filter(User.team_id == t.id, User.id != t.manager_id)
+                .all()
+            )
+            teammates_names = [u.name for u in teammates]
+            teammates_str = ", ".join(teammates_names)
+
+            user_teams.append({
+                "team_name": t.team_name,
+                "manager_name": manager_name,
+                "teammates_str": teammates_str
+            })
+    else:
+        user_teams = None
+        manager_teams = []
+        selected_team_id = None
 
     # Base task query, optionally filtered by team for managers
     task_query = Task.query

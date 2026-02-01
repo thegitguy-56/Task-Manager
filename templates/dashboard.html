@@ -1,194 +1,242 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h2 class="mb-3">Dashboard</h2>
-<p class="text-muted mb-4">Welcome, {{ user.name }} ({{ user.role }})</p>
+<div class="container main-content">
 
-{% if user.role == 'admin' or user.role == 'manager' %}
-<form method="get" class="mb-3">
-    <div class="row g-2 align-items-end">
-        <div class="col-md-3">
-            <label class="form-label">Team (for analytics)</label>
-            <select name="team_id" class="form-select" onchange="this.form.submit()">
-                <option value="">All Teams</option>
-                {% for t in manager_teams %}
-                <option value="{{ t.id }}"
-                        {% if selected_team_id and selected_team_id|int == t.id %}selected{% endif %}>
-                    {{ t.team_name }}
-                </option>
-                {% endfor %}
-            </select>
-        </div>
+    <!-- HEADER -->
+    <div class="dashboard-header">
+        <h2 class="mb-1">Dashboard</h2>
+        <p class="text-muted mb-3">Welcome, {{ user.name }} ({{ user.role }})</p>
+
+        {% if user.role == 'admin' or user.role == 'manager' %}
+        <form method="get" class="mb-0">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Team (for analytics)</label>
+                    <select name="team_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All Teams</option>
+                        {% for t in manager_teams %}
+                        <option value="{{ t.id }}"
+                                {% if selected_team_id and selected_team_id|int == t.id %}selected{% endif %}>
+                            {{ t.team_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </form>
+        {% endif %}
     </div>
-</form>
-{% endif %}
 
-<div class="row g-3 mb-4">
-    <!-- Overall Progress -->
-    <div class="col-md-4">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">Overall Progress</h5>
-                {% if total_tasks > 0 %}
-                    <p class="card-text mb-1">
-                        {{ completed_tasks }} of {{ total_tasks }} tasks completed ({{ progress_pct }}%)
-                    </p>
-                    <div class="progress" style="height: 22px;">
-                        <div class="progress-bar bg-success progress-bar-animated-custom"
-                             role="progressbar"
-                             style="--progress-width: {{ progress_pct }}%;"
-                             aria-valuenow="{{ progress_pct }}"
-                             aria-valuemin="0"
-                             aria-valuemax="100">
-                            {{ progress_pct }}%
+    <!-- TOP ROW: Progress / Your Teams / Quick Actions -->
+    <div class="row mb-3 g-3">
+        <!-- Overall Progress -->
+        <div class="col-md-4">
+            <div class="card section-card">
+                <div class="card-header">Overall Progress</div>
+                <div class="card-body">
+                    {% if total_tasks > 0 %}
+                        <p class="mb-2 small">
+                            {{ completed_tasks }} of {{ total_tasks }} tasks completed ({{ progress_pct }}%)
+                        </p>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar bg-success progress-bar-animated-custom"
+                                 role="progressbar"
+                                 style="--progress-width: {{ progress_pct }}%;"
+                                 aria-valuenow="{{ progress_pct }}"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100">
+                                {{ progress_pct }}%
+                            </div>
                         </div>
-                    </div>
-                {% else %}
-                    <p class="card-text text-muted">No tasks created yet.</p>
-                {% endif %}
+                    {% else %}
+                        <p class="text-muted small mb-0">No tasks created yet.</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Quick Actions -->
-    <div class="col-md-4">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">Quick Actions</h5>
-                <div class="d-grid gap-2">
-                    <a href="{{ url_for('tasks') }}" class="btn btn-primary btn-sm">
-                        Go to Task Management
-                    </a>
-                    {% if user.role == 'admin' or user.role == 'manager' %}
-                    <a href="{{ url_for('create_team_page') }}" class="btn btn-outline-secondary btn-sm">
-                        Create New Team
-                    </a>
+        <!-- Your Teams (click -> modal with details) -->
+        <div class="col-md-4">
+            <div class="card section-card">
+                <div class="card-header">Your Teams</div>
+                <div class="card-body">
+                    {% if user_teams %}
+                        {% for team in user_teams %}
+                            {# teammates_str is a comma-separated string from backend #}
+                            <span class="team-pill"
+                                  data-bs-toggle="modal"
+                                  data-bs-target="#teamModal"
+                                  data-team-name="{{ team.team_name }}"
+                                  data-manager-name="{{ team.manager_name }}"
+                                  data-teammates="{{ team.teammates_str }}">
+                                {{ team.team_name }}
+                            </span>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted small mb-0">No teams yet.</p>
                     {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="col-md-4">
+            <div class="card section-card">
+                <div class="card-header">Quick Actions</div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('tasks') }}" class="btn btn-primary btn-sm">
+                            Go to Task Management
+                        </a>
+                        {% if user.role == 'admin' or user.role == 'manager' %}
+                        <a href="{{ url_for('create_team_page') }}" class="btn btn-outline-secondary btn-sm">
+                            Create New Team
+                        </a>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Status Chart -->
-    <div class="col-md-4">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">Tasks by Status</h5>
-                {% if total_tasks > 0 %}
-                <canvas id="statusChart"
-                        width="200" height="200"
-                        data-pending="{{ pending_tasks }}"
-                        data-in-progress="{{ in_progress_tasks }}"
-                        data-completed="{{ completed_tasks }}"></canvas>
-                {% else %}
-                <p class="text-muted mb-0">No tasks yet to display.</p>
-                {% endif %}
+    {% if user.role == 'admin' or user.role == 'manager' %}
+    <!-- SECOND ROW FOR MANAGER: Member Stats + Tasks by Status + Recent Activity -->
+    <div class="row mb-3 g-3">
+        <!-- Member Completion Stats -->
+        <div class="col-md-8">
+            {% if user_stats %}
+            <div class="card section-card">
+                <div class="card-header">Member Completion Stats</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped align-middle mb-0">
+                            <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Total</th>
+                                <th>Completed</th>
+                                <th>%</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for s in user_stats %}
+                            <tr>
+                                <td>{{ s.name }}</td>
+                                <td>{{ s.total }}</td>
+                                <td>{{ s.completed }}</td>
+                                <td>{{ s.pct }}%</td>
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card section-card mt-3">
+                <div class="card-header">Recent Activity</div>
+                <div class="card-body">
+                    {% if recent_activity %}
+                        <ul class="list-unstyled mb-0 small">
+                            {% for a in recent_activity %}
+                            <li class="mb-2">
+                                <span class="text-muted">
+                                    {{ a.timestamp.strftime('%Y-%m-%d %H:%M') }}
+                                </span><br>
+                                <span>{{ a.action }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted small mb-0">No activity yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Tasks by Status chart (moved down) -->
+        <div class="col-md-4">
+            <div class="card section-card">
+                <div class="card-header">Tasks by Status</div>
+                <div class="card-body d-flex justify-content-center">
+                    {% if total_tasks > 0 %}
+                    <canvas id="statusChart"
+                            width="200" height="200"
+                            data-pending="{{ pending_tasks }}"
+                            data-in-progress="{{ in_progress_tasks }}"
+                            data-completed="{{ completed_tasks }}"></canvas>
+                    {% else %}
+                    <p class="text-muted small mb-0 align-self-center">No tasks yet to display.</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
-</div>
+    {% else %}
+    <!-- NON-MANAGER: second row is Team info + Recent Activity (no Member Stats) -->
+    <div class="row mb-3 g-3">
+        <div class="col-md-6">
+            <div class="card section-card">
+                <div class="card-header">Recent Activity</div>
+                <div class="card-body">
+                    {% if recent_activity %}
+                        <ul class="list-unstyled mb-0 small">
+                            {% for a in recent_activity %}
+                            <li class="mb-2">
+                                <span class="text-muted">
+                                    {{ a.timestamp.strftime('%Y-%m-%d %H:%M') }}
+                                </span><br>
+                                <span>{{ a.action }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted small mb-0">No activity yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
 
-<!-- Teams / Role Info -->
-{% if user.role == 'admin' or user.role == 'manager' %}
-<div class="card shadow-sm mb-3">
-    <div class="card-body">
-        <h5 class="card-title">Your Teams</h5>
-        {% if user_teams %}
-            <ul class="list-group list-group-flush">
-                {% for team in user_teams %}
-                    <li class="list-group-item">{{ team.team_name }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p class="text-muted mb-0">No teams yet.</p>
-        {% endif %}
-    </div>
-</div>
-
-{% if user_stats %}
-<div class="card shadow-sm mb-3">
-    <div class="card-body">
-        <h5 class="card-title">Member Completion Stats</h5>
-        <div class="table-responsive">
-            <table class="table table-sm table-striped align-middle mb-0">
-                <thead class="table-light">
-                <tr>
-                    <th>Name</th>
-                    <th>Total</th>
-                    <th>Completed</th>
-                    <th>%</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for s in user_stats %}
-                <tr>
-                    <td>{{ s.name }}</td>
-                    <td>{{ s.total }}</td>
-                    <td>{{ s.completed }}</td>
-                    <td>{{ s.pct }}%</td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+        <div class="col-md-6">
+            <div class="card section-card">
+                <div class="card-header">Tasks by Status</div>
+                <div class="card-body d-flex justify-content-center">
+                    {% if total_tasks > 0 %}
+                    <canvas id="statusChart"
+                            width="200" height="200"
+                            data-pending="{{ pending_tasks }}"
+                            data-in-progress="{{ in_progress_tasks }}"
+                            data-completed="{{ completed_tasks }}"></canvas>
+                    {% else %}
+                    <p class="text-muted small mb-0 align-self-center">No tasks yet to display.</p>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
-</div>
-{% endif %}
-{% endif %}
+    {% endif %}
 
-<!-- Team membership info (for everyone with a team) -->
-<div class="card shadow-sm">
-    <div class="card-body">
-        <h5 class="card-title">Your Team</h5>
-        {% if current_team %}
-            <p class="mb-1">
-                <strong>Team:</strong> {{ current_team.team_name }}
-            </p>
-            {% if manager %}
-            <p class="mb-1">
-                <strong>Manager:</strong> {{ manager.name }}
-            </p>
-            {% endif %}
-            {% if teammates %}
-            <p class="mb-1"><strong>Teammates:</strong></p>
-            <ul class="mb-0">
-                {% for mate in teammates %}
-                    <li>{{ mate.name }} ({{ mate.role }})</li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <p class="text-muted mb-0">No other teammates yet.</p>
-            {% endif %}
-        {% else %}
-            <p class="text-muted mb-0">
-                You are not assigned to any team yet.
-            </p>
-        {% endif %}
-    </div>
 </div>
 
-<!-- Recent Activity -->
-<div class="card shadow-sm mt-3">
-    <div class="card-body">
-        <h5 class="card-title">Recent Activity</h5>
-        {% if recent_activity %}
-            <ul class="list-unstyled mb-0">
-                {% for a in recent_activity %}
-                <li class="mb-1">
-                    <span class="small text-muted">
-                        {{ a.timestamp.strftime('%Y-%m-%d %H:%M') }}
-                    </span>
-                    <br>
-                    <span class="small">
-                        {{ a.action }}
-                    </span>
-                </li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p class="text-muted mb-0">No activity yet.</p>
-        {% endif %}
+<!-- TEAM DETAILS MODAL -->
+<div class="modal fade" id="teamModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="teamModalLabel">Team details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"
+                aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-1"><strong>Team:</strong> <span id="tm-team-name"></span></p>
+        <p class="mb-1"><strong>Manager:</strong> <span id="tm-manager-name"></span></p>
+        <p class="mb-1"><strong>Teammates:</strong></p>
+        <ul class="mb-0" id="tm-teammates-list"></ul>
+      </div>
     </div>
+  </div>
 </div>
 
 {% if total_tasks > 0 %}
@@ -201,7 +249,6 @@
         const inProgress = Number(ctx.dataset.inProgress || 0);
         const completed = Number(ctx.dataset.completed || 0);
 
-        // If all zero, don't render chart
         if (!pending && !inProgress && !completed) {
             return;
         }
@@ -233,5 +280,40 @@
     });
 </script>
 {% endif %}
+
+<!-- Modal fill script -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var teamModal = document.getElementById('teamModal');
+    if (!teamModal) return;
+
+    teamModal.addEventListener('show.bs.modal', function (event) {
+        var trigger = event.relatedTarget;
+        if (!trigger) return;
+
+        var teamName = trigger.getAttribute('data-team-name') || '';
+        var managerName = trigger.getAttribute('data-manager-name') || '—';
+        var teammatesStr = trigger.getAttribute('data-teammates') || '';
+
+        document.getElementById('tm-team-name').textContent = teamName;
+        document.getElementById('tm-manager-name').textContent = managerName;
+
+        var list = document.getElementById('tm-teammates-list');
+        list.innerHTML = '';
+
+        if (teammatesStr.trim().length) {
+            teammatesStr.split(',').forEach(function (name) {
+                var li = document.createElement('li');
+                li.textContent = name.trim();
+                list.appendChild(li);
+            });
+        } else {
+            var li = document.createElement('li');
+            li.textContent = 'No other teammates yet.';
+            list.appendChild(li);
+        }
+    });
+});
+</script>
 
 {% endblock %}

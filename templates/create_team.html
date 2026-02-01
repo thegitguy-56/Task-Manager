@@ -1,17 +1,45 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h2>Create Team</h2>
+<div class="container main-content">
+  <div class="row justify-content-center">
+    <div class="col-md-5">
+      <div class="card section-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Create Team</span>
+          <a href="{{ url_for('manage_teams') }}" class="btn btn-sm btn-outline-secondary">
+            Manage Teams
+          </a>
+        </div>
 
-<form method="post" action="{{ url_for('create_team') }}">
-    <label>Team Name:</label>
-    <input type="text" name="team_name" required><br>
+        <div class="card-body">
+          <p class="text-muted small mb-3">
+            Create a new team and you will be set as its manager.
+          </p>
 
-    <button type="submit">Create Team</button>
-</form>
+          <form method="post" action="{{ url_for('create_team') }}">
+            <div class="mb-3">
+              <label class="form-label">Team name</label>
+              <input type="text"
+                     name="team_name"
+                     class="form-control"
+                     placeholder="e.g. Frontend Squad"
+                     required>
+            </div>
 
-<p>
-    <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
-</p>
+            <div class="d-flex justify-content-between">
+              <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                Cancel
+              </a>
+              <button type="submit" class="btn btn-primary btn-sm">
+                Create Team
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 {% endblock %}

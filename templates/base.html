@@ -1,23 +1,21 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="light">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <title>TeamOrbit – Task Manager</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-theme.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body class="bg-light">
+<body class="{% if request.endpoint in ['login', 'register'] %}auth-page{% endif %}">
 
-<nav class="navbar navbar-expand-lg mb-4 border-bottom">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
     <div class="container-fluid">
-        <a class="navbar-brand" href="{{ url_for('dashboard') }}">TeamOrbit</a>
+        <a class="navbar-brand app-logo" href="{{ url_for('dashboard') }}">TEAMORBIT</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
                 data-bs-target="#navbarNav" aria-controls="navbarNav"
                 aria-expanded="false" aria-label="Toggle navigation">
@@ -47,13 +45,15 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="profileDropdown"
                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <span class="badge bg-light text-dark me-1">
-                                {{ current_user.role|capitalize }}
-                            </span>
                             {{ current_user.name }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
-                            <li><h6 class="dropdown-header">{{ current_user.email }}</h6></li>
+                            <li>
+                                <h6 class="dropdown-header">
+                                    {{ current_user.email }}<br>
+                                    <span class="badge bg-secondary mt-1">{{ current_user.role|capitalize }}</span>
+                                </h6>
+                            </li>
                             <li><a class="dropdown-item" href="{{ url_for('profile') }}">My Profile</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('logout') }}">Logout</a></li>
@@ -66,13 +66,6 @@
                     </li>
                 {% endif %}
             </ul>
-
-            <form class="d-flex align-items-center ms-3">
-                <div class="form-check form-switch text-light">
-                    <input class="form-check-input" type="checkbox" id="darkModeSwitch">
-                    <label class="form-check-label small" for="darkModeSwitch">Dark</label>
-                </div>
-            </form>
         </div>
     </div>
 </nav>
@@ -109,25 +102,41 @@
     });
 </script>
 <script>
-    // Dark mode toggle using data-bs-theme and localStorage
+    // Auto-collapse navbar after 5 seconds of inactivity once opened
     document.addEventListener('DOMContentLoaded', function () {
-        const htmlEl = document.documentElement;
-        const switchEl = document.getElementById('darkModeSwitch');
+        const nav = document.getElementById('navbarNav');
+        const toggler = document.querySelector('.navbar-toggler');
+        if (!nav || !toggler) return;
 
-        // Load saved theme or default to light
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        htmlEl.setAttribute('data-bs-theme', savedTheme);
-        if (switchEl) {
-            switchEl.checked = (savedTheme === 'dark');
+        let collapse = new bootstrap.Collapse(nav, { toggle: false });
+        let hideTimer = null;
+
+        function scheduleHide() {
+            clearTimeout(hideTimer);
+            hideTimer = setTimeout(function () {
+                collapse.hide();
+            }, 5000); // 5 seconds
         }
 
-        if (switchEl) {
-            switchEl.addEventListener('change', function () {
-                const newTheme = this.checked ? 'dark' : 'light';
-                htmlEl.setAttribute('data-bs-theme', newTheme);
-                localStorage.setItem('theme', newTheme);
-            });
-        }
+        toggler.addEventListener('click', function () {
+            // toggle manually to always go through Collapse instance
+            if (nav.classList.contains('show')) {
+                collapse.hide();
+                clearTimeout(hideTimer);
+            } else {
+                collapse.show();
+                scheduleHide();
+            }
+        });
+
+        nav.addEventListener('mouseenter', function () {
+            clearTimeout(hideTimer);
+        });
+        nav.addEventListener('mouseleave', function () {
+            if (nav.classList.contains('show')) {
+                scheduleHide();
+            }
+        });
     });
 </script>
 </body>

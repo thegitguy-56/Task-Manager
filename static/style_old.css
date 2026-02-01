@@ -1,0 +1,175 @@
+/* Global background */
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: #f3f4f6; /* soft grey */
+}
+
+label {
+    display: inline-block;
+    width: 100px;
+}
+
+input, select, button {
+    margin-bottom: 8px;
+}
+
+.flash-messages {
+    list-style: none;
+    padding: 0;
+    color: red;
+}
+
+.progress-bar-animated-custom {
+    width: var(--progress-width, 0%);
+}
+
+/* Base: let Bootstrap theme drive colors */
+html[data-bs-theme="light"] body {
+    background-color: #f8f9fa;
+    color: #212529;
+}
+
+html[data-bs-theme="dark"] body {
+    background-color: #0b0b0b;
+    color: #f8f9fa;
+}
+
+/* Cards and tables in dark mode */
+html[data-bs-theme="dark"] .card {
+    background-color: #181818;
+    border-color: #2b2b2b;
+}
+
+html[data-bs-theme="dark"] .table,
+html[data-bs-theme="dark"] .table thead,
+html[data-bs-theme="dark"] .table tbody,
+html[data-bs-theme="dark"] .table tr,
+html[data-bs-theme="dark"] .table td,
+html[data-bs-theme="dark"] .table th {
+    color: #f8f9fa;
+    background-color: #181818;
+}
+
+/* Navbar in dark mode */
+html[data-bs-theme="dark"] .navbar {
+    background-color: #101010 !important;
+}
+
+/* Headings and links */
+html[data-bs-theme="dark"] h1,
+html[data-bs-theme="dark"] h2,
+html[data-bs-theme="dark"] h3,
+html[data-bs-theme="dark"] h4,
+html[data-bs-theme="dark"] h5,
+html[data-bs-theme="dark"] h6,
+html[data-bs-theme="dark"] .nav-link {
+    color: #f8f9fa;
+}
+
+/* Selection color (so selected text is visible) */
+html[data-bs-theme="dark"] ::selection {
+    background: #3399ff;
+    color: #ffffff;
+}
+
+/* App navbar tint when logged in */
+/* App navbar tint when logged in - removed, using default Bootstrap primary */
+/*
+body.authenticated .navbar {
+    background-color: #0d6efd;
+    border-bottom: none;
+}
+
+body.authenticated .navbar .navbar-brand,
+body.authenticated .navbar .nav-link,
+body.authenticated .navbar .navbar-text {
+    color: #ffffff !important;
+}
+*/
+
+/* Soft navbar with subtle color */
+.soft-nav {
+    border-bottom: none;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+    background: linear-gradient(180deg, #f29b9b 0%, #7ebce0 100%);
+}
+
+/* Brand pill with gradient */
+.app-logo {
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    position: relative;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #111827 !important;
+}
+
+/* Brand hover effect */
+.app-logo:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(13, 110, 253, 0.4);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Nav links with bottom indicator */
+.navbar .nav-link {
+    position: relative;
+    font-weight: 500;
+    color: #334155; /* slate */
+}
+
+.navbar .nav-link.active,
+.navbar .nav-link:hover {
+    color: #0d6efd;
+}
+
+.navbar .nav-link.active::after,
+.navbar .nav-link:hover::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -4px;
+    margin: 0 auto;
+    width: 60%;
+    height: 2px;
+    border-radius: 999px;
+    background: #0d6efd;
+}
+
+/* Keep cards bright on grey */
+.card {
+    position: relative;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    background-color: #ffffff;
+}
+
+/* Card title emphasis */
+.card .card-title {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+/* Colored strip on cards */
+.card.shadow-sm::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    border-radius: 14px 0 0 14px;
+    background: linear-gradient(180deg, #0d6efd, #22c55e);
+    opacity: 0.09;
+}
+
+/* Emphasize section headings */
+h2 {
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #0f172a; /* darker */
+}

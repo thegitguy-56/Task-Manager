@@ -1,0 +1,87 @@
+<div class="modal fade" id="createTaskModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Create New Task</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"
+                aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="{{ url_for('create_task') }}">
+          <!-- single horizontal row -->
+          <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+              <label class="form-label small">Task Name</label>
+              <input type="text" name="task_name" class="form-control" required>
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label small">Description</label>
+              <input type="text" name="description" class="form-control">
+            </div>
+
+            {% if current_user.role != 'member' %}
+            <div class="col-md-2">
+              <label class="form-label small">Team</label>
+              <select name="team_id" class="form-select" required>
+                <option value="">Team</option>
+                {% for t in manager_teams %}
+                <option value="{{ t.id }}"
+                        {% if team_id and team_id|int == t.id %}selected{% endif %}>
+                  {{ t.team_name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            {% else %}
+            <input type="hidden" name="team_id" value="{{ current_user.team_id }}">
+            {% endif %}
+
+            <div class="col-md-2">
+              <label class="form-label small">Assigned To</label>
+              <select name="assigned_to" class="form-select" required>
+                {% if current_user.role == 'member' %}
+                  <option value="{{ current_user.id }}" selected>
+                    {{ current_user.name }} ({{ current_user.role }})
+                  </option>
+                {% else %}
+                  <option value="">User</option>
+                  {% for user in users %}
+                  <option value="{{ user.id }}">{{ user.name }} ({{ user.role }})</option>
+                  {% endfor %}
+                {% endif %}
+              </select>
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label small">Priority</label>
+              <select name="priority" class="form-select">
+                <option value="">None</option>
+                <option value="Low">Low</option>
+                <option value="Medium" selected>Medium</option>
+                <option value="High">High</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- slim bottom row -->
+          <div class="row g-3 mt-3 align-items-end">
+            <div class="col-md-3">
+              <label class="form-label small">Start Date</label>
+              <input type="date" name="start_date" class="form-control">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small">End Date</label>
+              <input type="date" name="end_date" class="form-control">
+            </div>
+            <div class="col-md-6 d-flex justify-content-end">
+              <button type="submit" class="btn btn-dark px-4">
+                Create Task
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

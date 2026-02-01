@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container main-content">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card section-card">
+        <div class="card-header">
+          Edit Task
+        </div>
+        <div class="card-body">
+          <form method="post">
+            <div class="mb-3">
+              <label class="form-label">Task name</label>
+              <input type="text" name="task_name" class="form-control"
+                     value="{{ task.task_name }}" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-control" rows="3">{{ task.description }}</textarea>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Assigned to</label>
+              <select name="assigned_to" class="form-select" required>
+                {% for u in users %}
+                <option value="{{ u.id }}"
+                        {% if u.id == task.assigned_to %}selected{% endif %}>
+                  {{ u.name }} ({{ u.role }})
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Start date</label>
+                <input type="date" name="start_date" class="form-control"
+                       value="{{ task.start_date }}">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">End date</label>
+                <input type="date" name="end_date" class="form-control"
+                       value="{{ task.end_date }}">
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Priority</label>
+              <select name="priority" class="form-select">
+                <option value="">None</option>
+                <option value="High"   {% if task.priority == 'High' %}selected{% endif %}>High</option>
+                <option value="Medium" {% if task.priority == 'Medium' %}selected{% endif %}>Medium</option>
+                <option value="Low"    {% if task.priority == 'Low' %}selected{% endif %}>Low</option>
+              </select>
+            </div>
+
+            <div class="d-flex justify-content-between">
+              <a href="{{ url_for('tasks') }}" class="btn btn-outline-secondary btn-sm">
+                Cancel
+              </a>
+              <button type="submit" class="btn btn-primary btn-sm">
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

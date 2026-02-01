@@ -1,72 +1,110 @@
+/* Page background + space for fixed navbar */
 body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
+    background-color: #f5f5f7;
+    padding-top: 100px;
+    margin: 0;
 }
 
-label {
+/* Smaller top padding on login/register so centering works */
+.auth-page {
+    padding-top: 80px;
+}
+
+/* Flexbox container to center auth cards */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 80px);
+}
+
+/* Main content width */
+.main-content {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Cards */
+.section-card {
+    border-radius: 6px;
+    border: none;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+}
+
+.section-card .card-header {
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    border-bottom: none;
+    padding-bottom: 0.25rem;
+}
+
+.section-card .card-body {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+}
+
+/* Dashboard title spacing */
+.dashboard-header {
+    margin-bottom: 1.5rem;
+}
+
+/* Smaller table spacing */
+.table-sm td,
+.table-sm th {
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
+}
+
+/* Your Teams: pills */
+.team-pill {
     display: inline-block;
-    width: 100px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #f1f3f5;
+    margin-right: 8px;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
 }
 
-input, select, button {
-    margin-bottom: 8px;
+.team-pill:hover {
+    background: #e0e4ea;
+    transform: translateY(-1px);
 }
 
-.flash-messages {
-    list-style: none;
-    padding: 0;
-    color: red;
+/* Navbar brand simple style */
+.app-logo {
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
-.progress-bar-animated-custom {
-    width: var(--progress-width, 0%);
+/* Active nav link underline */
+.navbar .nav-link.active {
+    position: relative;
 }
 
-/* Base: let Bootstrap theme drive colors */
-html[data-bs-theme="light"] body {
-    background-color: #f8f9fa;
-    color: #212529;
+.navbar .nav-link.active::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -4px;
+    width: 60%;
+    margin: 0 auto;
+    height: 2px;
+    border-radius: 999px;
+    background: #0d6efd;
+}
+.modal-content {
+    border-radius: 6px;
 }
 
-html[data-bs-theme="dark"] body {
-    background-color: #0b0b0b;
-    color: #f8f9fa;
-}
-
-/* Cards and tables in dark mode */
-html[data-bs-theme="dark"] .card {
-    background-color: #181818;
-    border-color: #2b2b2b;
-}
-
-html[data-bs-theme="dark"] .table,
-html[data-bs-theme="dark"] .table thead,
-html[data-bs-theme="dark"] .table tbody,
-html[data-bs-theme="dark"] .table tr,
-html[data-bs-theme="dark"] .table td,
-html[data-bs-theme="dark"] .table th {
-    color: #f8f9fa;
-    background-color: #181818;
-}
-
-/* Navbar in dark mode */
-html[data-bs-theme="dark"] .navbar {
-    background-color: #101010 !important;
-}
-
-/* Headings and links */
-html[data-bs-theme="dark"] h1,
-html[data-bs-theme="dark"] h2,
-html[data-bs-theme="dark"] h3,
-html[data-bs-theme="dark"] h4,
-html[data-bs-theme="dark"] h5,
-html[data-bs-theme="dark"] h6,
-html[data-bs-theme="dark"] .nav-link {
-    color: #f8f9fa;
-}
-
-/* Selection color (so selected text is visible) */
-html[data-bs-theme="dark"] ::selection {
-    background: #3399ff;
-    color: #ffffff;
+.modal-body {
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
 }
