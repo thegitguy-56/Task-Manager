@@ -8,7 +8,7 @@
       </div>
       <div class="modal-body">
         <form method="post" action="{{ url_for('create_task') }}">
-          <!-- single horizontal row -->
+          <!-- top horizontal row -->
           <div class="row g-3 align-items-end">
             <div class="col-md-3">
               <label class="form-label small">Task Name</label>
@@ -23,7 +23,7 @@
             {% if current_user.role != 'member' %}
             <div class="col-md-2">
               <label class="form-label small">Team</label>
-              <select name="team_id" class="form-select" required>
+              <select id="teamSelect" name="team_id" class="form-select" required>
                 <option value="">Team</option>
                 {% for t in manager_teams %}
                 <option value="{{ t.id }}"
@@ -39,7 +39,7 @@
 
             <div class="col-md-2">
               <label class="form-label small">Assigned To</label>
-              <select name="assigned_to" class="form-select" required>
+              <select id="assignedSelect" name="assigned_to" class="form-select" required>
                 {% if current_user.role == 'member' %}
                   <option value="{{ current_user.id }}" selected>
                     {{ current_user.name }} ({{ current_user.role }})
@@ -47,7 +47,9 @@
                 {% else %}
                   <option value="">User</option>
                   {% for user in users %}
-                  <option value="{{ user.id }}">{{ user.name }} ({{ user.role }})</option>
+                  <option value="{{ user.id }}" data-team-id="{{ user.team_id or '' }}">
+                    {{ user.name }} ({{ user.role }})
+                  </option>
                   {% endfor %}
                 {% endif %}
               </select>
@@ -64,7 +66,7 @@
             </div>
           </div>
 
-          <!-- slim bottom row -->
+          <!-- bottom row -->
           <div class="row g-3 mt-3 align-items-end">
             <div class="col-md-3">
               <label class="form-label small">Start Date</label>
@@ -85,3 +87,38 @@
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var teamSelect = document.getElementById('teamSelect');
+  var assignedSelect = document.getElementById('assignedSelect');
+
+  if (!teamSelect || !assignedSelect) return;
+
+  // cache all user options (skip first placeholder)
+  var allOptions = Array.from(assignedSelect.options).slice(1);
+
+  teamSelect.addEventListener('change', function () {
+    var teamId = teamSelect.value;
+
+    // reset assignedSelect
+    assignedSelect.innerHTML = '';
+    var placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'User';
+    assignedSelect.appendChild(placeholder);
+
+    if (!teamId) {
+      // no team selected -> only placeholder
+      return;
+    }
+
+    // add only users whose data-team-id matches selected team
+    allOptions.forEach(function (opt) {
+      if (String(opt.dataset.teamId || '') === String(teamId)) {
+        assignedSelect.appendChild(opt);
+      }
+    });
+  });
+});
+</script>
