@@ -6,7 +6,53 @@
     <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">Back to Dashboard</a>
 </div>
 
+<!-- Filters -->
+<form method="get" class="row g-2 mb-3 align-items-end">
+    <div class="col-md-2">
+        <label class="form-label">View</label>
+        <select name="view" class="form-select">
+            <option value="my" {% if view == 'my' %}selected{% endif %}>My Tasks</option>
+            {% if current_user.role != 'member' %}
+            <option value="all" {% if view == 'all' %}selected{% endif %}>All Tasks</option>
+            {% endif %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Status</label>
+        <select name="status" class="form-select">
+            <option value="">All</option>
+            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+            <option value="in progress" {% if status_filter == 'in progress' %}selected{% endif %}>In Progress</option>
+            <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Priority</label>
+        <select name="priority" class="form-select">
+            <option value="">All</option>
+            <option value="Low" {% if priority_filter == 'Low' %}selected{% endif %}>Low</option>
+            <option value="Medium" {% if priority_filter == 'Medium' %}selected{% endif %}>Medium</option>
+            <option value="High" {% if priority_filter == 'High' %}selected{% endif %}>High</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Sort By</label>
+        <select name="sort" class="form-select">
+            <option value="end_date" {% if sort == 'end_date' %}selected{% endif %}>End Date</option>
+            <option value="priority" {% if sort == 'priority' %}selected{% endif %}>Priority</option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Search</label>
+        <div class="input-group">
+            <input type="text" name="search" class="form-control" value="{{ search }}">
+            <button class="btn btn-outline-primary" type="submit">Apply</button>
+        </div>
+    </div>
+</form>
+
 <div class="row g-4">
+    <!-- Create Task Column -->
     <div class="col-md-4">
         <div class="card shadow-sm">
             <div class="card-body">
@@ -61,20 +107,20 @@
         </div>
     </div>
 
+    <!-- Task List Column -->
     <div class="col-md-8">
         <div class="card shadow-sm">
             <div class="card-body">
-                <h5 class="card-title mb-3">All Tasks</h5>
+                <h5 class="card-title mb-3">Tasks</h5>
                 {% if tasks %}
                 <div class="table-responsive">
-                    <table class="table table-striped table-sm align-middle">
+                    <table class="table table-striped table-hover table-sm align-middle">
                         <thead class="table-light">
                         <tr>
                             <th>ID</th>
-                            <th>Task Name</th>
+                            <th>Task</th>
                             <th>Assigned To</th>
-                            <th>Start</th>
-                            <th>End</th>
+                            <th>Dates</th>
                             <th>Priority</th>
                             <th>Status</th>
                             <th>Change Status</th>
@@ -82,9 +128,15 @@
                         </thead>
                         <tbody>
                         {% for task in tasks %}
-                        <tr>
+                        {% set is_overdue = task.end_date and task.end_date < today and task.status != 'completed' %}
+                        <tr class="{% if is_overdue %}table-danger{% endif %}">
                             <td>{{ task.id }}</td>
-                            <td>{{ task.task_name }}</td>
+                            <td>
+                                <div class="fw-semibold">{{ task.task_name }}</div>
+                                {% if task.description %}
+                                    <div class="small text-muted">{{ task.description }}</div>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% for user in users %}
                                     {% if user.id == task.assigned_to %}
@@ -92,9 +144,26 @@
                                     {% endif %}
                                 {% endfor %}
                             </td>
-                            <td>{{ task.start_date }}</td>
-                            <td>{{ task.end_date }}</td>
-                            <td>{{ task.priority }}</td>
+                            <td>
+                                <div class="small">
+                                    <span class="text-muted">Start:</span> {{ task.start_date or '-' }}<br>
+                                    <span class="text-muted">End:</span> {{ task.end_date or '-' }}
+                                </div>
+                                {% if is_overdue %}
+                                    <span class="badge bg-danger mt-1">Overdue</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if task.priority == 'High' %}
+                                    <span class="badge bg-danger">High</span>
+                                {% elif task.priority == 'Medium' %}
+                                    <span class="badge bg-warning text-dark">Medium</span>
+                                {% elif task.priority == 'Low' %}
+                                    <span class="badge bg-info text-dark">Low</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">None</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 <span class="badge
                                     {% if task.status == 'completed' %}bg-success
@@ -120,7 +189,7 @@
                     </table>
                 </div>
                 {% else %}
-                    <p class="text-muted mb-0">No tasks yet. Create one on the left.</p>
+                    <p class="text-muted mb-0">No tasks yet. Adjust filters or create one on the left.</p>
                 {% endif %}
             </div>
         </div>

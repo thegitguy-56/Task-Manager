@@ -1,4 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, abort
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    abort,
+)
 from flask_login import (
     LoginManager,
     login_user,
@@ -7,9 +15,10 @@ from flask_login import (
     current_user,
 )
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import func, case
 
 from models import db, User, Team, Task
-from datetime import datetime
+from datetime import datetime, date
 import os
 
 
@@ -19,12 +28,10 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "change_this_in_production"
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///database.db")
-# For some providers, postgres URL starts with postgres:// which SQLAlchemy dislikes
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
-
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # ---- Init DB ----
@@ -61,7 +68,6 @@ def register():
             flash("All fields are required")
             return redirect(url_for("register"))
 
-        # check duplicate email
         existing = User.query.filter_by(email=email).first()
         if existing:
             flash("Email already registered")
@@ -112,6 +118,7 @@ def logout():
     flash("Logged out")
     return redirect(url_for("login"))
 
+
 # DASHBOARD
 @app.route("/dashboard")
 @login_required
@@ -120,14 +127,43 @@ def dashboard():
     if current_user.role in ["admin", "manager"]:
         user_teams = Team.query.filter_by(manager_id=current_user.id).all()
 
-    # ---- Module 4: progress metrics ----
+    # Progress metrics
     total_tasks = Task.query.count()
     completed_tasks = Task.query.filter_by(status="completed").count()
+    pending_tasks = Task.query.filter_by(status="pending").count()
+    in_progress_tasks = Task.query.filter_by(status="in progress").count()
 
     if total_tasks > 0:
         progress_pct = round((completed_tasks / total_tasks) * 100)
     else:
         progress_pct = 0
+
+    # Per-user statistics (for admin/manager)
+    user_stats = []
+    if current_user.role in ["admin", "manager"]:
+        stats = (
+            db.session.query(
+                User.id,
+                User.name,
+                func.count(Task.id).label("total"),
+                func.sum(
+                    case(
+                        (Task.status == "completed", 1),
+                        else_=0,
+                    )
+                ).label("completed"),
+            )
+            .outerjoin(Task, Task.assigned_to == User.id)
+            .group_by(User.id)
+            .all()
+        )
+        for uid, name, total, completed in stats:
+            total = total or 0
+            completed = completed or 0
+            pct = int(completed * 100 / total) if total else 0
+            user_stats.append(
+                {"name": name, "total": total, "completed": completed, "pct": pct}
+            )
 
     return render_template(
         "dashboard.html",
@@ -135,9 +171,11 @@ def dashboard():
         user_teams=user_teams,
         total_tasks=total_tasks,
         completed_tasks=completed_tasks,
+        pending_tasks=pending_tasks,
+        in_progress_tasks=in_progress_tasks,
         progress_pct=progress_pct,
+        user_stats=user_stats,
     )
-
 
 
 # TEAM CREATION (admin/manager only)
@@ -167,20 +205,66 @@ def create_team():
     flash("Team created successfully")
     return redirect(url_for("dashboard"))
 
+
 @app.route("/init_db")
 def init_db():
     with app.app_context():
         db.create_all()
     return "Database initialized"
-# ---------- TASKS (Module 3) ----------
+
+
+# ---------- TASKS ----------
 
 @app.route("/tasks")
 @login_required
 def tasks():
-    # For now, show all tasks. Later you can filter by team/assigned user.
-    all_tasks = Task.query.all()
-    users = User.query.all()  # used for "Assigned To" dropdown
-    return render_template("tasks.html", tasks=all_tasks, users=users)
+    view = request.args.get("view", "my")  # 'my' or 'all'
+    status_filter = request.args.get("status", "")
+    priority_filter = request.args.get("priority", "")
+    search = request.args.get("search", "")
+    sort = request.args.get("sort", "end_date")  # 'end_date' or 'priority'
+
+    query = Task.query
+
+    # My vs All
+    if view == "my" or current_user.role == "member":
+        query = query.filter(Task.assigned_to == current_user.id)
+
+    # Filters
+    if status_filter:
+        query = query.filter(Task.status == status_filter)
+    if priority_filter:
+        query = query.filter(Task.priority == priority_filter)
+    if search:
+        query = query.filter(Task.task_name.ilike(f"%{search}%"))
+
+    # Sort
+    if sort == "end_date":
+        query = query.order_by(Task.end_date.asc().nullslast())
+    elif sort == "priority":
+        priority_order = case(
+            (Task.priority == "High", 1),
+            (Task.priority == "Medium", 2),
+            (Task.priority == "Low", 3),
+            else_=4,
+        )
+        query = query.order_by(priority_order, Task.end_date.asc().nullslast())
+
+    all_tasks = query.all()
+    users = User.query.all()
+    today = date.today()
+
+    return render_template(
+        "tasks.html",
+        tasks=all_tasks,
+        users=users,
+        today=today,
+        view=view,
+        status_filter=status_filter,
+        priority_filter=priority_filter,
+        search=search,
+        sort=sort,
+    )
 
 
 @app.route("/create_task", methods=["POST"])
@@ -197,13 +281,14 @@ def create_task():
         flash("Task name and assigned user are required")
         return redirect(url_for("tasks"))
 
-    # convert dates from string (YYYY-MM-DD) to date objects
-    start_date = None
-    end_date = None
-    if start_date_str:
-        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
-    if end_date_str:
-        end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+    start_date = (
+        datetime.strptime(start_date_str, "%Y-%m-%d").date()
+        if start_date_str
+        else None
+    )
+    end_date = (
+        datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else None
+    )
 
     new_task = Task(
         task_name=task_name,
@@ -231,12 +316,12 @@ def update_status(task_id):
         flash("Invalid status")
         return redirect(url_for("tasks"))
 
-    # (Basic rule: any logged-in user can update; you can restrict later)
     task.status = new_status
     db.session.commit()
 
     flash("Task status updated")
     return redirect(url_for("tasks"))
+
 
 # ---- DB create + run ----
 if __name__ == "__main__":
