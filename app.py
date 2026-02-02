@@ -390,7 +390,28 @@ def manage_teams():
         team_members=team_members,
         other_users=other_users,
     )
+@app.route("/delete_team/<int:team_id>", methods=["POST"])
+@login_required
+def delete_team(team_id):
+    if current_user.role not in ["admin", "manager"]:
+        abort(403)
 
+    team = Team.query.get_or_404(team_id)
+
+    # Only allow deleting teams owned by this manager/admin
+    if team.manager_id != current_user.id:
+        abort(403)
+
+    # Detach users from this team
+    members = User.query.filter(User.team_id == team.id).all()
+    for u in members:
+        u.team_id = None
+
+    db.session.delete(team)
+    db.session.commit()
+
+    flash(f"Team {team.team_name} deleted")
+    return redirect(url_for("manage_teams"))
 
 @app.route("/init_db")
 def init_db():
