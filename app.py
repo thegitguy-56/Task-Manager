@@ -188,23 +188,20 @@ def profile():
 @login_required
 def dashboard():
     # Teams managed by this user (for admin/manager)
-    user_teams = None
+    user_teams = []
     manager_teams = []
     selected_team_id = None
 
+    # ---- ADMIN / MANAGER: teams they manage ----
     if current_user.role in ["admin", "manager"]:
-        # teams this user manages
         teams_q = Team.query.filter_by(manager_id=current_user.id).all()
         manager_teams = teams_q
         selected_team_id = request.args.get("team_id")
 
-        # build enriched user_teams list for modal
-        user_teams = []
+        # build enriched user_teams list for modal (same as before)
         for t in teams_q:
-            # manager is the current user (by design)
             manager_name = current_user.name
 
-            # teammates = all users in this team except manager
             teammates = (
                 User.query
                 .filter(User.team_id == t.id, User.id != t.manager_id)
@@ -218,12 +215,31 @@ def dashboard():
                 "manager_name": manager_name,
                 "teammates_str": teammates_str
             })
-    else:
-        user_teams = None
-        manager_teams = []
-        selected_team_id = None
 
-    # Base task query, optionally filtered by team for managers
+    # ---- MEMBER: show their single team in user_teams ----
+    elif current_user.role == "member" and current_user.team_id:
+        t = Team.query.get(current_user.team_id)
+        if t:
+            # manager of this team
+            manager_user = User.query.get(t.manager_id) if t.manager_id else None
+            manager_name = manager_user.name if manager_user else "—"
+
+            # teammates = everyone in same team except current user
+            teammates = (
+                User.query
+                .filter(User.team_id == t.id, User.id != current_user.id)
+                .all()
+            )
+            teammates_names = [u.name for u in teammates]
+            teammates_str = ", ".join(teammates_names)
+
+            user_teams.append({
+                "team_name": t.team_name,
+                "manager_name": manager_name,
+                "teammates_str": teammates_str
+            })
+
+    # Base task query, optionally filtered by team for managers/members
     task_query = Task.query
     if current_user.role in ["admin", "manager"] and selected_team_id:
         task_query = task_query.filter(Task.team_id == int(selected_team_id))
@@ -235,10 +251,7 @@ def dashboard():
     pending_tasks = task_query.filter_by(status="pending").count()
     in_progress_tasks = task_query.filter_by(status="in progress").count()
 
-    if total_tasks > 0:
-        progress_pct = round((completed_tasks / total_tasks) * 100)
-    else:
-        progress_pct = 0
+    progress_pct = round((completed_tasks / total_tasks) * 100) if total_tasks > 0 else 0
 
     # Per-user statistics (for admin/manager, optionally per team)
     user_stats = []
@@ -273,7 +286,8 @@ def dashboard():
                 {"name": name, "total": total, "completed": completed, "pct": pct}
             )
 
-    # Team membership info for any logged-in user
+    # Team membership info for any logged-in user (you can keep or remove this,
+    # it's not used by the new Your Teams pills but may be useful elsewhere)
     current_team = None
     teammates = []
     manager = None
@@ -285,7 +299,6 @@ def dashboard():
         if current_team and current_team.manager_id:
             manager = User.query.get(current_team.manager_id)
 
-    # Recent activity (not filtered by team for now)
     recent_activity = (
         Activity.query.order_by(Activity.timestamp.desc()).limit(10).all()
     )
@@ -293,7 +306,7 @@ def dashboard():
     return render_template(
         "dashboard.html",
         user=current_user,
-        user_teams=user_teams,
+        user_teams=user_teams,         # now filled for members too
         manager_teams=manager_teams,
         selected_team_id=selected_team_id,
         total_tasks=total_tasks,
