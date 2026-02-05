@@ -161,5 +161,3 @@ If I continue this project, possible enhancements include:
 - More detailed reporting (per‑team burndown charts, export to CSV/PDF)
 
 ***
-
-You can adjust the repo URL, commands, or “What I Learned” section to match your exact setup and workflow.
