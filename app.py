@@ -29,14 +29,28 @@ import io
 app = Flask(__name__)
 
 # ---- Config ----
-app.config["SECRET_KEY"] = "change_this_in_production"
+IS_PRODUCTION = os.getenv("FLASK_ENV") == "production" or os.getenv("VERCEL") == "1"
+
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-only-secret-key")
+if IS_PRODUCTION and app.config["SECRET_KEY"] == "dev-only-secret-key":
+    raise RuntimeError("SECRET_KEY must be set in production")
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///database.db")
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+if IS_PRODUCTION and not os.getenv("DATABASE_URL"):
+    raise RuntimeError("DATABASE_URL must be set in production")
+
+if DATABASE_URL.startswith("postgresql://") and "sslmode=" not in DATABASE_URL:
+    separator = "&" if "?" in DATABASE_URL else "?"
+    DATABASE_URL = f"{DATABASE_URL}{separator}sslmode=require"
+
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_pre_ping": True,
+}
 
 # ---- Init DB ----
 db.init_app(app)
@@ -428,6 +442,11 @@ def delete_team(team_id):
 
 @app.route("/init_db")
 def init_db():
+    init_token = os.getenv("INIT_DB_TOKEN")
+    if IS_PRODUCTION:
+        if not init_token or request.args.get("token") != init_token:
+            abort(403)
+
     with app.app_context():
         db.create_all()
     return "Database initialized"
