@@ -256,4 +256,8 @@ https://<your-app-domain>/init_db?token=<your-init-db-token>
 - Task/team visibility seems wrong:
   - verify user role and `team_id` assignments
 
+ ## Made by
+ - V Rohan
+ - J karthik
+
 ---
